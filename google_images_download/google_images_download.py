@@ -37,6 +37,11 @@ import re
 import codecs
 import socket
 
+import tkinter as tk
+from tkinter import filedialog, messagebox
+import os
+import webbrowser
+
 args_list = ["keywords", "keywords_from_file", "prefix_keywords", "suffix_keywords",
              "limit", "format", "color", "color_type", "usage_rights", "size",
              "exact_size", "aspect_ratio", "type", "time", "time_range", "delay", "url", "single_image",
@@ -45,6 +50,43 @@ args_list = ["keywords", "keywords_from_file", "prefix_keywords", "suffix_keywor
              "thumbnail", "thumbnail_only", "language", "prefix", "chromedriver", "related_images", "safe_search",
              "no_numbering",
              "offset", "no_download", "save_source", "silent_mode", "ignore_urls"]
+
+
+class GUIInterface:
+    def __init__(self, parent):
+        self.parent = parent
+        self.frame = tk.Frame(self.parent)
+        self.frame.pack()
+
+        parent.title("Google Images Download")
+
+        self.directory = ""
+        self.choice = 0
+
+        self.button_open_web = tk.Button(self.frame, text = "Open in Browser", width=15, command=self.open_web)
+        self.button_open_web.grid(row=0, padx = 100, pady = (50, 7))
+        self.button_stay_terminal = tk.Button(self.frame, text = "Stay in Terminal", width=15, command=self.select_directory)
+        self.button_stay_terminal.grid(row=1, padx = 100, pady = (7, 50))
+
+    def open_web(self):
+        #webbrowser.open_new(url)
+        self.choice = 1
+        self.parent.destroy()
+
+    def select_directory(self):
+        self.selection = messagebox.askyesno("Selection", "Do you want to change the directory to save images to?\nCurrent Directory: " + os.getcwd())
+        if self.selection == True:
+            self.directory = filedialog.askdirectory()
+            if self.directory:
+                messagebox.showinfo("Selection", "You have selected the following directory: " + self.directory)
+                print("Selected Directory:", self.directory)
+                self.choice = 2
+            else:
+                messagebox.showerror("Selection", "Directory not selected; files will be downloaded into the current directory.")
+                self.directory = os.getcwd()
+        else:
+            messagebox.showinfo("Selection", "Files will be downloaded into the current directory.")
+        self.parent.destroy()
 
 
 def user_input():
@@ -927,6 +969,10 @@ class googleimagesdownload:
     # Bulk Download
     def download(self, arguments):
         paths_agg = {}
+
+        root = tk.Tk()
+        gui = GUIInterface(root)
+        root.mainloop()
         # for input coming from other python files
         if __name__ != "__main__":
             # if the calling file contains config_file param
@@ -952,22 +998,37 @@ class googleimagesdownload:
                 return paths_agg, total_errors
             # if the calling file contains params directly
             else:
+                if gui.choice == 1:
+                    arg_keywords = arguments['keywords'].split(',')
+                    for keyword in arg_keywords:
+                        webbrowser.open_new("https://www.google.com/search?tbm=isch&q=" + "%20".join(keyword.split(' ')))
+                    print("Successfully opened in browser!")
+                    sys.exit()
+                else:
+                    paths, errors = self.download_executor(arguments)
+                    for i in paths:
+                        paths_agg[i] = paths[i]
+                    if not arguments["silent_mode"]:
+                        if arguments['print_paths']:
+                            print(paths.encode('raw_unicode_escape').decode('utf-8'))
+                    return paths_agg, errors
+        # for input coming from CLI
+        else:
+            if gui.choice == 1:
+                arg_keywords = arguments['keywords'].split(',')
+                for keyword in arg_keywords:
+                    webbrowser.open_new("https://www.google.com/search?tbm=isch&q=" + "%20".join(keyword.split(' ')))
+                print("Successfully opened in browser!")
+                sys.exit()
+            else:
                 paths, errors = self.download_executor(arguments)
                 for i in paths:
                     paths_agg[i] = paths[i]
                 if not arguments["silent_mode"]:
                     if arguments['print_paths']:
                         print(paths.encode('raw_unicode_escape').decode('utf-8'))
-                return paths_agg, errors
-        # for input coming from CLI
-        else:
-            paths, errors = self.download_executor(arguments)
-            for i in paths:
-                paths_agg[i] = paths[i]
-            if not arguments["silent_mode"]:
-                if arguments['print_paths']:
-                    print(paths.encode('raw_unicode_escape').decode('utf-8'))
-        return paths_agg, errors
+        if gui.choice != 1:
+            return paths_agg, errors
 
     def download_executor(self, arguments):
         paths = {}
@@ -1127,8 +1188,8 @@ def main():
     records = user_input()
     total_errors = 0
     t0 = time.time()  # start the timer
-    for arguments in records:
 
+    for arguments in records:
         if arguments['single_image']:  # Download Single Image using a URL
             response = googleimagesdownload()
             response.single_image(arguments['single_image'])
