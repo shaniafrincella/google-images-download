@@ -86,6 +86,7 @@ class GUIInterface:
                 self.directory = os.getcwd()
         else:
             messagebox.showinfo("Selection", "Files will be downloaded into the current directory.")
+            self.directory = os.getcwd()
         self.parent.destroy()
 
 
@@ -970,9 +971,10 @@ class googleimagesdownload:
     def download(self, arguments):
         paths_agg = {}
 
-        root = tk.Tk()
-        gui = GUIInterface(root)
-        root.mainloop()
+        self.root = tk.Tk()
+        self.gui = GUIInterface(self.root)
+        self.root.mainloop()
+
         # for input coming from other python files
         if __name__ != "__main__":
             # if the calling file contains config_file param
@@ -998,7 +1000,7 @@ class googleimagesdownload:
                 return paths_agg, total_errors
             # if the calling file contains params directly
             else:
-                if gui.choice == 1:
+                if self.gui.choice == 1:
                     arg_keywords = arguments['keywords'].split(',')
                     for keyword in arg_keywords:
                         webbrowser.open_new("https://www.google.com/search?tbm=isch&q=" + "%20".join(keyword.split(' ')))
@@ -1011,10 +1013,12 @@ class googleimagesdownload:
                     if not arguments["silent_mode"]:
                         if arguments['print_paths']:
                             print(paths.encode('raw_unicode_escape').decode('utf-8'))
+                    if self.gui.choice == 2:
+                        sys.exit()
                     return paths_agg, errors
         # for input coming from CLI
         else:
-            if gui.choice == 1:
+            if self.gui.choice == 1:
                 arg_keywords = arguments['keywords'].split(',')
                 for keyword in arg_keywords:
                     webbrowser.open_new("https://www.google.com/search?tbm=isch&q=" + "%20".join(keyword.split(' ')))
@@ -1027,7 +1031,7 @@ class googleimagesdownload:
                 if not arguments["silent_mode"]:
                     if arguments['print_paths']:
                         print(paths.encode('raw_unicode_escape').decode('utf-8'))
-        if gui.choice != 1:
+        if self.gui.choice != 1:
             return paths_agg, errors
 
     def download_executor(self, arguments):
@@ -1099,6 +1103,9 @@ class googleimagesdownload:
             main_directory = arguments['output_directory']
         else:
             main_directory = "downloads"
+
+        if self.gui.choice == 2:
+            main_directory = self.gui.directory
 
         # Proxy settings
         if arguments['proxy']:
@@ -1180,6 +1187,7 @@ class googleimagesdownload:
                     total_errors = total_errors + errorCount
                     if not arguments["silent_mode"]:
                         print("\nErrors: " + str(errorCount) + "\n")
+
         return paths, total_errors
 
 
