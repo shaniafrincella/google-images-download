@@ -40,7 +40,8 @@ import socket
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import os
-import webbrowser
+import webbrowser  # Importing the web browser library to access web browser
+from PIL import ImageTk, Image  # Importing the python image library to load JPEG and PNG files
 
 args_list = ["keywords", "keywords_from_file", "prefix_keywords", "suffix_keywords",
              "limit", "format", "color", "color_type", "usage_rights", "size",
@@ -65,11 +66,11 @@ class GUIInterface:
 
         self.button_open_web = tk.Button(self.frame, text = "Open in Browser", width=15, command=self.open_web)
         self.button_open_web.grid(row=0, padx = 100, pady = (50, 7))
+
         self.button_stay_terminal = tk.Button(self.frame, text = "Stay in Terminal", width=15, command=self.select_directory)
         self.button_stay_terminal.grid(row=1, padx = 100, pady = (7, 50))
 
     def open_web(self):
-        #webbrowser.open_new(url)
         self.choice = 1
         self.parent.destroy()
 
@@ -89,6 +90,81 @@ class GUIInterface:
             self.directory = os.getcwd()
         self.parent.destroy()
 
+class ImageViewer:
+    def __init__(self, parent, image_list):
+        self.parent = parent
+        self.frame = tk.Frame(self.parent)
+        self.frame.grid()
+        self.frame_low = tk.Frame(self.parent)
+        self.frame_low.grid(sticky = tk.S)
+
+        parent.title("Google Images Download - Image Viewer")
+
+        self.image_list = image_list
+        self.images = []
+        self.image_index = 0
+
+        if self.image_list:
+            self.button_back = tk.Button(self.frame_low, text="<<", command=self.back)
+            self.button_back.grid(row=1, column=0)
+
+            self.button_quit = tk.Button(self.frame_low, text = "Quit Image Viewer", width=15, command= self.frame.quit)
+            self.button_quit.grid(row=1, column =1)
+
+            self.button_forward = tk.Button(self.frame_low, text=">>", command=self.forward)
+            self.button_forward.grid(row=1, column=2)
+
+            self.back()
+
+            self.max_width = 500
+            self.max_height = 500
+
+            for image_dir in self.image_list:
+                img = Image.open(image_dir)
+                width, height = img.size
+                if self.max_width < width:
+                    ratio = min(self.max_width / width, self.max_height / height)
+                else:
+                    ratio = min(width / self.max_width, height / self.max_height)
+                width = int(width * ratio)
+                height = int(height * ratio)
+
+                img = img.resize((width, height), Image.ANTIALIAS)
+
+                self.images.append(ImageTk.PhotoImage(img))
+
+            self.my_label = tk.Label(self.frame, image = self.images[self.image_index])
+            self.my_label.grid(row=0, column =0, columnspan =3)
+        else:
+            messagebox.showerror("Error", "Images not found!")
+            self.parent.destroy()
+
+    def forward(self):
+        if self.image_index != (len(self.image_list) - 1):
+            self.image_index += 1
+            self.button_forward.configure(state=tk.NORMAL)
+            self.my_label.configure(image=self.images[self.image_index])
+        else:
+            self.button_forward.configure(state=tk.DISABLED)
+
+        if self.image_index == 0:
+            self.button_back.configure(state=tk.DISABLED)
+        else:
+            self.button_back.configure(state=tk.NORMAL)
+
+    def back(self):
+        self.n_images = len(self.image_list)
+        if self.image_index == 0:
+            self.button_back.configure(state=tk.DISABLED)
+        else:
+            self.image_index -= 1
+            self.button_back.configure(state=tk.NORMAL)
+            self.my_label.configure(image=self.images[self.image_index])
+
+        if self.image_index == (len(self.image_list) - 1):
+            self.button_forward.configure(state=tk.DISABLED)
+        else:
+            self.button_forward.configure(state=tk.NORMAL)
 
 def user_input():
     config = argparse.ArgumentParser()
@@ -1014,6 +1090,16 @@ class googleimagesdownload:
                         if arguments['print_paths']:
                             print(paths.encode('raw_unicode_escape').decode('utf-8'))
                     if self.gui.choice == 2:
+                        images_dir = []
+                        images_cat = []
+                        for category in paths_agg:
+                            images_cat.append(category)
+                            images_dir.append(paths_agg.get(category))
+                        images_dir_flat = [single_image for images in images_dir for single_image in images]
+
+                        self.root = tk.Tk()
+                        self.gui = ImageViewer(self.root, images_dir_flat)
+                        self.root.mainloop()
                         sys.exit()
                     return paths_agg, errors
         # for input coming from CLI
@@ -1031,6 +1117,7 @@ class googleimagesdownload:
                 if not arguments["silent_mode"]:
                     if arguments['print_paths']:
                         print(paths.encode('raw_unicode_escape').decode('utf-8'))
+
         if self.gui.choice != 1:
             return paths_agg, errors
 
